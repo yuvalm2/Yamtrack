@@ -98,12 +98,22 @@ Upstream's workflows are inherited and run here too. `app-tests.yml` and
 `lint.yml` fire on every push to `main` and are worth keeping — CI runs the full
 suite including the Playwright tests, which the local setup above does not.
 
-**`.github/dependabot.yml` is deliberately deleted.** On this repo's first day
-it opened 9 PRs in six minutes, and merging any of them would diverge `uv.lock`
-from upstream — the opposite of how this fork is meant to work. Dependency
-bumps arrive with the next rebase, because upstream's own Dependabot does the
-work. Do not restore it; if a CVE needs attention, rebase onto the upstream
-release that fixes it.
+**`.github/dependabot.yml` is rewritten, not inherited.** Upstream's version is
+daily with `open-pull-requests-limit: 30` and groups that cover only
+minor/patch, so every major bump gets its own PR — 9 PRs in six minutes on this
+repo's first day. Ours groups everything (majors included, which needs an
+explicit `update-types`) with a limit of 1, so each ecosystem has a single
+standing PR that Dependabot keeps updating until it is merged or closed.
+
+Only `uv` and `docker` are enabled — the two that reach the deployed image.
+Dependabot cannot group across ecosystems, so two standing PRs is the floor;
+drop the `docker` entry if you want exactly one.
+
+**Prefer rebasing over merging one of those PRs.** Merging diverges `uv.lock`
+from upstream, which is what this fork is structured to avoid, and an unpinned
+transitive bump is a deploy — FlowDeck rejected every card edit for hours on
+2026-09-22 that way. Rebase onto an upstream release that already carries the
+bump; merge here only for something that cannot wait.
 
 `codeql.yml` (weekly) and `stale.yml` (daily) crons are also inherited and do
 nothing useful here, but they are harmless and left alone to keep the diff

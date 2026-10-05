@@ -1,0 +1,50 @@
+# Rewritten for this fork. Upstream's config is tuned for a public project that
+# actually maintains its dependencies: daily, open-pull-requests-limit 30, and
+# groups that cover only minor/patch, so every major bump arrives as its own PR.
+# On this repo's first day that produced 9 PRs in six minutes.
+#
+# Here we want the opposite: one standing PR per ecosystem that Dependabot keeps
+# updating until we approve it, so dependency drift stays visible without being
+# noise. Grouping everything -- majors included -- plus a limit of 1 is what
+# collapses it; without the explicit update-types, majors escape the group.
+#
+# Dependabot groups within an ecosystem, never across them, so one PR total is
+# not possible. Only the two ecosystems that affect the deployed image are
+# enabled: `uv` (Python dependencies) and `docker` (the Dockerfile base images).
+# Upstream's `github-actions` and `docker_compose` entries are dropped on
+# purpose -- Orchestra composes this service itself, so upstream's compose files
+# are never deployed, and we keep its CI without needing to bump its actions.
+#
+# Merging one of these diverges uv.lock from upstream, which is a real cost on a
+# fork meant to rebase cheaply. Prefer rebasing onto an upstream release that
+# already carries the bump; merge here only for something that cannot wait.
+version: 2
+updates:
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # One PR, continuously updated, until we merge or close it.
+    open-pull-requests-limit: 1
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 1
+    groups:
+      base-images:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
