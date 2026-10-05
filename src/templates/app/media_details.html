@@ -286,7 +286,7 @@
                 </div>
                 <p x-ref="notesText"
                    :class="isExpanded ? '' : 'line-clamp-3'"
-                   class="text-sm text-gray-300 italic">"{{ current_instance.notes|linebreaksbr }}"</p>
+                   class="text-sm text-gray-300 italic">"{{ current_instance.notes|urlize|linebreaksbr }}"</p>
                 <button x-show="isClamped"
                         @click="isExpanded = !isExpanded"
                         class="text-indigo-400 hover:text-indigo-300 text-xs mt-1 focus:outline-none transition-colors cursor-pointer">
@@ -300,6 +300,30 @@
         {# Actions #}
         <h2 class="text-xl font-bold mb-4">Actions</h2>
         <div class="bg-[#2a2f35] rounded-lg overflow-hidden divide-y divide-white/5 mb-6">
+          {# Notes & links #}
+          <div x-data="{ notesOpen: false }">
+            <button class="w-full flex items-center gap-x-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#343a40] transition-colors duration-200 cursor-pointer"
+                    title="Notes and links"
+                    hx-get="{% media_view_url 'notes_modal' media %}"
+                    hx-target="#{% component_id 'notes' media %}"
+                    hx-trigger="click once"
+                    @click="notesOpen = true">
+              <span class="flex items-center justify-center w-8 h-8 rounded-md bg-yellow-600/15 text-yellow-400 shrink-0">
+                {% include "app/icons/page.svg" with classes="w-4 h-4" %}
+              </span>
+              <span class="font-medium">Notes &amp; links</span>
+            </button>
+
+            <div x-show="notesOpen"
+                 @keydown.escape.window="notesOpen = false"
+                 class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <div class="w-96 max-h-[90vh] px-4 md:px-0 relative z-60"
+                   @click.outside="notesOpen = false">
+                <div id="{% component_id 'notes' media %}"></div>
+              </div>
+            </div>
+          </div>
+
           {# Custom Lists #}
           <div x-data="{ listsOpen: false }">
             <button class="w-full flex items-center gap-x-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#343a40] transition-colors duration-200 cursor-pointer"
@@ -537,7 +561,7 @@
                       <div class="flex-1">
                         <p x-ref="notesText"
                            :class="isExpanded ? '' : 'line-clamp-2'"
-                           class="text-xs text-gray-300 italic">"{{ user_media.notes|linebreaksbr }}"</p>
+                           class="text-xs text-gray-300 italic">"{{ user_media.notes|urlize|linebreaksbr }}"</p>
                         <button x-show="isClamped"
                                 @click="isExpanded = !isExpanded"
                                 class="text-indigo-400 hover:text-indigo-300 text-xs mt-1 focus:outline-none transition-colors cursor-pointer">
@@ -605,6 +629,39 @@
 
                               {% include "app/components/fill_track_episode.html" with request=request media=media episode=episode episode_title=episode.title csrf_token=csrf_token TRACK_TIME=TRACK_TIME only %}
 
+                            </div>
+
+                            {# Watched up to here #}
+                            <div x-data="{ upToOpen: false }">
+                              <button @click="upToOpen = true"
+                                      title="Mark watched up to here"
+                                      class="p-2 bg-sky-600 hover:bg-sky-700 text-white rounded-full transition duration-300 cursor-pointer">
+                                {% include "app/icons/circle-check.svg" with classes="w-4 h-4" %}
+                              </button>
+
+                              {% include "app/components/fill_watch_upto.html" with request=request media=media episode=episode csrf_token=csrf_token only %}
+
+                            </div>
+
+                            {# Notes #}
+                            <div x-data="{ notesOpen: false }">
+                              <button class="p-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-full transition duration-300 cursor-pointer"
+                                      title="Notes and links"
+                                      hx-get="{% media_view_url 'notes_modal' episode %}"
+                                      hx-target="#{% component_id 'notes' episode %}"
+                                      hx-trigger="click once"
+                                      @click="notesOpen = true">
+                                {% include "app/icons/page.svg" with classes="w-4 h-4" %}
+                              </button>
+
+                              <div x-show="notesOpen"
+                                   @keydown.escape.window="notesOpen = false"
+                                   class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                                <div class="w-96 max-h-[90vh] px-4 md:px-0 relative z-60"
+                                     @click.outside="notesOpen = false">
+                                  <div id="{% component_id 'notes' episode %}"></div>
+                                </div>
+                              </div>
                             </div>
 
                             {# Lists #}

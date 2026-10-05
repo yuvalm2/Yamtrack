@@ -7,6 +7,7 @@ from django.contrib.admin.sites import AlreadyRegistered
 from app.models import (
     Episode,
     Item,
+    MediaNote,
     UserMessage,
 )
 
@@ -45,6 +46,15 @@ class UserMessageAdmin(admin.ModelAdmin):
     list_filter = ["level", "shown_at"]
 
 
+@admin.register(MediaNote)
+class MediaNoteAdmin(admin.ModelAdmin):
+    """Custom admin for per-item notes and links."""
+
+    search_fields = ["item__title", "user__username", "title", "url", "body"]
+    list_display = ["__str__", "kind", "user", "created_at"]
+    list_filter = ["kind"]
+
+
 class MediaAdmin(admin.ModelAdmin):
     """Custom admin for regular media model with search and filter options."""
 
@@ -57,8 +67,10 @@ class MediaAdmin(admin.ModelAdmin):
 
 
 # Auto-register remaining models
+# MediaNote is not a Media subclass, so MediaAdmin's status/score columns do not
+# apply to it -- it has its own admin above.
 app_models = apps.get_app_config("app").get_models()
-SpecialModels = ["Item", "Episode", "BasicMedia", "UserMessage"]
+SpecialModels = ["Item", "Episode", "BasicMedia", "UserMessage", "MediaNote"]
 for model in app_models:
     if (
         not model.__name__.startswith("Historical")

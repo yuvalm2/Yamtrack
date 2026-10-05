@@ -695,21 +695,10 @@ def mark_user_messages_shown(request):
     return HttpResponse(status=204)
 
 
-@require_POST
-def episode_save(request):
-    """Handle the creation, deletion, and updating of episodes for a season."""
-    media_id = request.POST["media_id"]
-    season_number = int(request.POST["season_number"])
-    episode_number = int(request.POST["episode_number"])
-    source = request.POST["source"]
-
-    form = EpisodeForm(request.POST)
-    if not form.is_valid():
-        logger.error("Form validation failed: %s", form.errors)
-        return HttpResponseBadRequest("Invalid form data")
-
+def get_or_create_season(request, media_id, source, season_number):
+    """Return the user's season row, creating it and its item if needed."""
     try:
-        related_season = Season.objects.get(
+        return Season.objects.get(
             item__media_id=media_id,
             item__source=source,
             item__season_number=season_number,
@@ -744,8 +733,53 @@ def episode_save(request):
         )
 
         logger.info("%s did not exist, it was created successfully.", related_season)
+        return related_season
+
+
+@require_POST
+def episode_save(request):
+    """Handle the creation, deletion, and updating of episodes for a season."""
+    media_id = request.POST["media_id"]
+    season_number = int(request.POST["season_number"])
+    episode_number = int(request.POST["episode_number"])
+    source = request.POST["source"]
+
+    form = EpisodeForm(request.POST)
+    if not form.is_valid():
+        logger.error("Form validation failed: %s", form.errors)
+        return HttpResponseBadRequest("Invalid form data")
+
+    related_season = get_or_create_season(request, media_id, source, season_number)
 
     related_season.watch(episode_number, form.cleaned_data["end_date"])
+
+    return helpers.redirect_back(request)
+
+
+@require_POST
+def episode_watch_upto(request):
+    """Mark every released episode up to and including the posted one as watched."""
+    media_id = request.POST["media_id"]
+    season_number = int(request.POST["season_number"])
+    episode_number = int(request.POST["episode_number"])
+    source = request.POST["source"]
+
+    related_season = get_or_create_season(request, media_id, source, season_number)
+    created = related_season.watch_upto(episode_number)
+
+    if created:
+        episode_label = "episode" if created == 1 else "episodes"
+        messages.success(
+            request,
+            f"Marked {created} {episode_label} as watched, "
+            f"up to episode {episode_number}.",
+        )
+    else:
+        messages.info(
+            request,
+            f"Every released episode up to episode {episode_number} "
+            "was already watched.",
+        )
 
     return helpers.redirect_back(request)
 

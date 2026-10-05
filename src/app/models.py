@@ -1588,6 +1588,121 @@ class Season(Media):
             episode,
         )
 
+    def get_eps_upto(self, season_metadata, episode_number, current_date):
+        """Return the unwatched released episodes at or before episode_number."""
+        if self.pk is None:
+            watched_ep_nums = set()
+        else:
+            watched_ep_nums = set(
+                Episode.objects.filter(related_season=self).values_list(
+                    "item__episode_number",
+                    flat=True,
+                ),
+            )
+
+        # Calculate current time once before the loop
+        now = timezone.now().replace(second=0, microsecond=0)
+        episodes_to_create = []
+
+        for episode in season_metadata["episodes"]:
+            if episode["episode_number"] > episode_number:
+                continue
+
+            # Leave an already-watched episode alone, so filling a gap below it
+            # never adds a repeat to it.
+            if episode["episode_number"] in watched_ep_nums:
+                continue
+
+            if not app.helpers.is_released_date(
+                episode.get("air_date"),
+                current_date,
+            ):
+                continue
+
+            item = self.get_episode_item(episode["episode_number"], season_metadata)
+
+            # Resolve end_date based on user preference
+            end_date = self.user.resolve_watch_date(now, episode.get("air_date"))
+
+            episodes_to_create.append(
+                Episode(
+                    related_season=self,
+                    item=item,
+                    end_date=end_date,
+                ),
+            )
+
+        return episodes_to_create
+
+    def watch_upto(self, episode_number):
+        """Mark every released episode at or before episode_number as watched.
+
+        Fills gaps below episode_number and returns how many episodes were
+        created, so "watched up to here" is repeatable without stacking repeats.
+        """
+        season_metadata = providers.services.get_media_metadata(
+            MediaTypes.SEASON.value,
+            self.item.media_id,
+            self.item.source,
+            [self.item.season_number],
+        )
+        current_date = timezone.localdate()
+        episodes_to_create = self.get_eps_upto(
+            season_metadata,
+            episode_number,
+            current_date,
+        )
+
+        if not episodes_to_create:
+            return 0
+
+        bulk_create_with_history(
+            episodes_to_create,
+            Episode,
+        )
+        self._sync_statuses_after_bulk_watch(season_metadata)
+
+        return len(episodes_to_create)
+
+    def _sync_statuses_after_bulk_watch(self, season_metadata):
+        """Move this season and its show to the status the episodes now imply.
+
+        bulk_create_with_history skips Episode.save(), which is what normally
+        cascades these statuses, so reconcile them once here instead of per
+        episode. get_completion_status() is deliberately NOT used: it assumes
+        every released episode was watched, so it reports COMPLETED for a season
+        marked only part-way through.
+        """
+        self.refresh_from_db()
+
+        # Same rule as Episode.save(): the season is done once its last episode
+        # is watched. Reading the real latest watched number rather than the
+        # episode just saved also keeps a finished season COMPLETED when an
+        # earlier gap is backfilled.
+        max_episode_number = len(season_metadata["episodes"])
+        is_complete = self._get_latest_watched_episode_number() >= max_episode_number
+        target_status = (
+            Status.COMPLETED.value if is_complete else Status.IN_PROGRESS.value
+        )
+
+        if self.status != target_status:
+            self.status = target_status
+            bulk_update_with_history(
+                [self],
+                Season,
+                fields=["status"],
+            )
+
+        if is_complete:
+            self.related_tv._handle_completed_season(self.item.season_number)
+        elif self.related_tv.status != Status.IN_PROGRESS.value:
+            self.related_tv.status = Status.IN_PROGRESS.value
+            bulk_update_with_history(
+                [self.related_tv],
+                TV,
+                fields=["status"],
+            )
+
     def decrease_progress(self):
         """Unwatch the current episode of the season."""
         self.unwatch(self.progress)
@@ -1931,3 +2046,64 @@ class BoardGame(Media):
     """Model for board games."""
 
     tracker = FieldTracker()
+
+
+class MediaNoteKinds(models.TextChoices):
+    """Kinds of reference material that can hang off a media item."""
+
+    NOTE = "note", "Note"
+    LINK = "link", "Link"
+
+
+class MediaNote(models.Model):
+    """A text note or a titled URL a user attached to a media item.
+
+    Separate from Media.notes, which is a single free-text field on the
+    tracking row. These are many-per-item reference material, and they anchor
+    to Item rather than to a Media subclass so one model covers shows, seasons,
+    episodes, movies, books, games and the rest without a generic foreign key.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="media_notes",
+    )
+    item = models.ForeignKey(
+        Item,
+        on_delete=models.CASCADE,
+        related_name="user_notes",
+    )
+    kind = models.CharField(
+        max_length=10,
+        choices=MediaNoteKinds,
+        default=MediaNoteKinds.NOTE.value,
+    )
+    # Unused columns stay empty strings rather than NULL, to keep the template
+    # and form paths free of None checks.
+    title = models.CharField(max_length=255, blank=True, default="")
+    url = models.URLField(max_length=2000, blank=True, default="")
+    body = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        """Meta options for the model."""
+
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "item"], name="app_medianote_user_item"),
+        ]
+
+    def __str__(self):
+        """Return a short label for the note."""
+        return f"{self.get_kind_display()} on {self.item}"
+
+    @property
+    def display_title(self):
+        """Return the label to show for the note."""
+        if self.title:
+            return self.title
+        if self.kind == MediaNoteKinds.LINK.value:
+            return self.url
+        return ""

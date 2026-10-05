@@ -14,6 +14,8 @@ from app.models import (
     Game,
     Item,
     Manga,
+    MediaNote,
+    MediaNoteKinds,
     MediaTypes,
     Movie,
     Season,
@@ -381,3 +383,36 @@ class EpisodeForm(forms.ModelForm):
             self.fields["end_date"].widget = forms.DateInput(
                 attrs={"type": "date"},
             )
+
+
+class MediaNoteForm(forms.ModelForm):
+    """Form for a single text note or titled URL on a media item."""
+
+    class Meta:
+        """Bind form to model."""
+
+        model = MediaNote
+        fields = ("kind", "title", "url", "body")
+        widgets = {
+            "title": forms.TextInput(
+                attrs={"placeholder": "Optional label"},
+            ),
+            "url": forms.URLInput(
+                attrs={"placeholder": "https://..."},
+            ),
+            "body": forms.Textarea(
+                attrs={"placeholder": "Write a note...", "rows": "4"},
+            ),
+        }
+
+    def clean(self):
+        """Require the field that the chosen kind actually stores."""
+        cleaned_data = super().clean()
+        kind = cleaned_data.get("kind")
+
+        if kind == MediaNoteKinds.LINK.value and not cleaned_data.get("url"):
+            self.add_error("url", "A link needs a URL.")
+        elif kind == MediaNoteKinds.NOTE.value and not cleaned_data.get("body"):
+            self.add_error("body", "A note needs some text.")
+
+        return cleaned_data

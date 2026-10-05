@@ -1,0 +1,135 @@
+{# Notes & links panel. Swapped in by htmx and re-rendered in place on every
+   save or delete, so each form targets the panel itself rather than an id the
+   parent template would have to agree on. #}
+<div class="notes-panel bg-[#2a2f35] p-6 rounded-lg max-h-[70svh] overflow-y-auto">
+
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="text-2xl font-bold text-white">Notes &amp; links</h2>
+    <button class="text-gray-400 hover:text-white cursor-pointer"
+            @click="notesOpen = false">{% include "app/icons/x.svg" with classes="w-6 h-6" %}</button>
+  </div>
+
+  {# Existing notes #}
+  <ul class="space-y-3 mb-6">
+    {% for note in notes %}
+      <li class="bg-[#39404b] p-3 rounded-md">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0 flex-1">
+            {% if note.kind == "link" %}
+              <a href="{{ note.url }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 transition-colors break-words">
+                {% include "app/icons/link.svg" with classes="w-4 h-4 shrink-0" %}
+                <span class="break-all">{{ note.display_title }}</span>
+                {% include "app/icons/external-link.svg" with classes="w-3 h-3 shrink-0" %}
+              </a>
+              {% if note.title and note.body %}
+                <p class="text-sm text-gray-300 mt-1 break-words">{{ note.body|urlize|linebreaksbr }}</p>
+              {% endif %}
+            {% else %}
+              {% if note.title %}
+                <p class="text-sm font-semibold text-white mb-1 break-words">{{ note.title }}</p>
+              {% endif %}
+              {# urlize so a URL pasted into a note body is clickable too #}
+              <p class="text-sm text-gray-200 break-words">{{ note.body|urlize|linebreaksbr }}</p>
+            {% endif %}
+            <p class="text-xs text-gray-500 mt-1.5">{{ note.created_at|date_format:request.user }}</p>
+          </div>
+
+          <form hx-post="{% url 'note_delete' %}"
+                hx-target="closest .notes-panel"
+                hx-swap="outerHTML">
+            {% csrf_token %}
+            <input type="hidden" name="note_id" value="{{ note.id }}">
+            <button type="submit"
+                    title="Delete"
+                    class="text-red-400 hover:text-red-300 transition-colors p-1 hover:bg-red-600/20 rounded-md cursor-pointer">
+              {% include "app/icons/trashcan.svg" with classes="w-4 h-4" %}
+            </button>
+          </form>
+        </div>
+      </li>
+    {% empty %}
+      <li class="text-gray-300 text-sm">No notes or links yet.</li>
+    {% endfor %}
+  </ul>
+
+  <div class="border-t border-gray-600 mb-6"></div>
+
+  {# Add a note or a link #}
+  {# djlint:off #}
+  <form hx-post="{% url 'note_save' %}"
+        hx-target="closest .notes-panel"
+        hx-swap="outerHTML"
+        x-data="{ kind: '{{ form.kind.value|default:'note' }}' }">
+    {% csrf_token %}
+    <input type="hidden" name="item_id" value="{{ item.id }}">
+
+    {# Kind picker #}
+    <div class="flex gap-2 mb-4">
+      <label class="flex-1">
+        <input type="radio" name="kind" value="note" x-model="kind" class="sr-only peer">
+        <span class="block text-center px-3 py-2 rounded-md cursor-pointer transition-colors bg-[#343a40] text-gray-300 peer-checked:bg-indigo-600 peer-checked:text-white">
+          Note
+        </span>
+      </label>
+      <label class="flex-1">
+        <input type="radio" name="kind" value="link" x-model="kind" class="sr-only peer">
+        <span class="block text-center px-3 py-2 rounded-md cursor-pointer transition-colors bg-[#343a40] text-gray-300 peer-checked:bg-indigo-600 peer-checked:text-white">
+          Link
+        </span>
+      </label>
+    </div>
+
+    {# Title: optional for both kinds #}
+    <label class="block text-sm font-medium text-gray-300 mb-1"
+           for="{{ form.title.id_for_label }}">
+      Title <span class="text-gray-500">(optional)</span>
+    </label>
+    <input type="text"
+           name="title"
+           id="{{ form.title.id_for_label }}"
+           maxlength="255"
+           value="{{ form.title.value|default:'' }}"
+           placeholder="Optional label"
+           class="w-full p-2 mb-1 bg-[#39404b] rounded-md text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[#4a9eff]">
+    {% for error in form.title.errors %}<p class="text-sm text-red-400 mb-2">{{ error }}</p>{% endfor %}
+
+    {# URL: links only #}
+    <div x-show="kind === 'link'" class="mt-3">
+      <label class="block text-sm font-medium text-gray-300 mb-1"
+             for="{{ form.url.id_for_label }}">URL</label>
+      <input type="url"
+             name="url"
+             id="{{ form.url.id_for_label }}"
+             value="{{ form.url.value|default:'' }}"
+             placeholder="https://..."
+             class="w-full p-2 bg-[#39404b] rounded-md text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[#4a9eff]">
+      {% for error in form.url.errors %}<p class="text-sm text-red-400 mt-1">{{ error }}</p>{% endfor %}
+    </div>
+
+    {# Body: required for a note, an optional comment on a link #}
+    <div class="mt-3">
+      <label class="block text-sm font-medium text-gray-300 mb-1"
+             for="{{ form.body.id_for_label }}">
+        <span x-show="kind === 'note'">Note</span>
+        <span x-show="kind === 'link'">Comment <span class="text-gray-500">(optional)</span></span>
+      </label>
+      <textarea name="body"
+                id="{{ form.body.id_for_label }}"
+                rows="4"
+                placeholder="Write a note..."
+                class="w-full p-2 bg-[#39404b] rounded-md text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[#4a9eff]">{{ form.body.value|default:'' }}</textarea>
+      {% for error in form.body.errors %}<p class="text-sm text-red-400 mt-1">{{ error }}</p>{% endfor %}
+    </div>
+
+    <div class="mt-4 flex items-center justify-end">
+      <button type="submit"
+              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition duration-300 cursor-pointer font-medium">
+        Add
+      </button>
+    </div>
+  </form>
+  {# djlint:on #}
+</div>

@@ -1,6 +1,6 @@
 from django.urls import path, register_converter
 
-from app import converters, views
+from app import converters, notes, views
 
 register_converter(converters.MediaTypeChecker, "media_type")
 register_converter(converters.SourceChecker, "source")
@@ -58,6 +58,28 @@ urlpatterns = [
         name="mark_user_messages_shown",
     ),
     path("episode_save", views.episode_save, name="episode_save"),
+    path(
+        "episode_watch_upto",
+        views.episode_watch_upto,
+        name="episode_watch_upto",
+    ),
+    path(
+        "notes_modal/<source:source>/<media_type:media_type>/<str:media_id>",
+        notes.notes_modal,
+        name="notes_modal",
+    ),
+    path(
+        "notes_modal/<source:source>/<media_type:media_type>/<str:media_id>/<int:season_number>",
+        notes.notes_modal,
+        name="notes_modal",
+    ),
+    path(
+        "notes_modal/<source:source>/<media_type:media_type>/<str:media_id>/<int:season_number>/<int:episode_number>",
+        notes.notes_modal,
+        name="notes_modal",
+    ),
+    path("note_save", notes.note_save, name="note_save"),
+    path("note_delete", notes.note_delete, name="note_delete"),
     path(
         "history_modal/<source:source>/<media_type:media_type>/<str:media_id>",
         views.history_modal,
