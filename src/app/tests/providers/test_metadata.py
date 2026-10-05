@@ -1,6 +1,7 @@
 import json
 from datetime import date
 from pathlib import Path
+from unittest import skip
 from unittest.mock import MagicMock, patch
 
 import requests
@@ -470,6 +471,13 @@ class Metadata(TestCase):
         response = comicvine.comic("155969")
         self.assertEqual(response["title"], "Ultimate Spider-Man")
 
+    # Local skip. This asserts on live Hardcover data, and the genre list for
+    # The Great Gatsby no longer contains a plain "Fiction" -- the publisher now
+    # returns "Literature & Fiction". It fails the same way on a pristine
+    # v0.26.3 checkout, so it is upstream's to fix; skipped here only so that a
+    # red build on this fork means something. Drop the decorator on the next
+    # rebase and see whether it passes.
+    @skip("asserts a live Hardcover genre list that changed at the publisher")
     def test_hardcover_book(self):
         """Test the metadata method for books from Hardcover."""
         response = hardcover.book("377193")

@@ -83,12 +83,31 @@ Measured against pristine `v0.26.3`, so do not attribute these to your change:
 - `*.test_integration.IntegrationTest` (`app` and `lists`) — needs
   `uv run playwright install`; errors in `setUpClass` without the browsers.
 - `app.tests.providers.test_metadata.Metadata.test_hardcover_book` — asserts a
-  live Hardcover genre list that has since changed upstream.
+  live Hardcover genre list that has since changed at the publisher. **Skipped
+  locally** so a red build here means something; drop the decorator on the next
+  rebase and see whether upstream has fixed it.
 - `integrations`/`users` import-schedule tests — 4 errors, pre-existing.
 
 Templates are **not** covered by the linters or the system check, so a bad
 filter or a missing `{% load %}` only shows up at runtime. Exercise a changed
 template with a view test.
+
+## CI
+
+Upstream's workflows are inherited and run here too. `app-tests.yml` and
+`lint.yml` fire on every push to `main` and are worth keeping — CI runs the full
+suite including the Playwright tests, which the local setup above does not.
+
+**`.github/dependabot.yml` is deliberately deleted.** On this repo's first day
+it opened 9 PRs in six minutes, and merging any of them would diverge `uv.lock`
+from upstream — the opposite of how this fork is meant to work. Dependency
+bumps arrive with the next rebase, because upstream's own Dependabot does the
+work. Do not restore it; if a CVE needs attention, rebase onto the upstream
+release that fixes it.
+
+`codeql.yml` (weekly) and `stale.yml` (daily) crons are also inherited and do
+nothing useful here, but they are harmless and left alone to keep the diff
+small.
 
 ## Deployment
 
