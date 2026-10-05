@@ -34,6 +34,15 @@ updates:
           - "major"
           - "minor"
           - "patch"
+    ignore:
+      # django-celery-beat pins django>=2.2,<6.1, so Dependabot's attempt at
+      # Django 6.1.x cannot resolve and it reports the whole update job as
+      # failed -- it still opens the group PR, but the run goes red every week
+      # for something no merge here can fix. Upstream decides when Django
+      # moves, and it cannot move until django-celery-beat lifts that ceiling.
+      # Remove this once it does.
+      - dependency-name: "django"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "docker"
     directory: "/"
