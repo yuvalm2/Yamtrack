@@ -21,3 +21,7 @@ TODO.txt
 # Node toolchain for rebuilding Tailwind CSS (see package.json)
 node_modules/
 package-lock.json
+
+# Upstream ignores CLAUDE.md. This fork tracks its own, so the rebase and
+# verification notes travel with the code.
+!CLAUDE.md
