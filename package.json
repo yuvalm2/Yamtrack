@@ -1,0 +1,12 @@
+{
+  "name": "yamtrack-css",
+  "private": true,
+  "description": "Pins the Tailwind CLI used to rebuild src/static/css/main.css. Upstream builds that file by hand with a globally installed CLI; this fork adds utility classes, so the version is pinned here to keep the regenerated file's diff limited to the new classes.",
+  "scripts": {
+    "build:css": "tailwindcss --input ./static/css/input.css --output ./static/css/main.css --cwd ./src/"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.1.4",
+    "tailwindcss": "4.1.4"
+  }
+}

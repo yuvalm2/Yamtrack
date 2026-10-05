@@ -17,3 +17,7 @@ requests.http
 TODO.txt
 .codex
 .cache
+
+# Node toolchain for rebuilding Tailwind CSS (see package.json)
+node_modules/
+package-lock.json
