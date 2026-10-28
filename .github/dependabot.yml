@@ -43,6 +43,12 @@ updates:
       # Remove this once it does.
       - dependency-name: "django"
         update-types: ["version-update:semver-major"]
+      # ruff 0.17 adds `datetime` -> `dt` to ICN001's default aliases, which
+      # flags 11 of upstream's `import datetime` lines and turns Lint red.
+      # Fixing them means editing upstream files, so hold ruff until upstream
+      # moves to 0.17 itself; drop this on the rebase that brings it.
+      - dependency-name: "ruff"
+        versions: [">=0.17"]
 
   - package-ecosystem: "docker"
     directory: "/"

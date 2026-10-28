@@ -115,6 +115,16 @@ transitive bump is a deploy — FlowDeck rejected every card edit for hours on
 2026-09-22 that way. Rebase onto an upstream release that already carries the
 bump; merge here only for something that cannot wait.
 
+Two temporary holds, each to be dropped on the rebase that makes it
+unnecessary:
+
+- **`app-tests.yml` runs on `ubuntu-24.04`, not `ubuntu-latest`.** GitHub moved
+  `ubuntu-latest` to 26.04 from 2026-10-19, and the locked Playwright (1.58)
+  maps that to `ubuntu26.04`, which has no browser builds, so
+  `playwright install` fails. Playwright 1.64.1 has them.
+- **Dependabot ignores `ruff >= 0.17`.** 0.17 adds `datetime` → `dt` to
+  ICN001's default aliases and flags 11 of upstream's `import datetime` lines.
+
 `codeql.yml` (weekly) and `stale.yml` (daily) crons are also inherited and do
 nothing useful here, but they are harmless and left alone to keep the diff
 small.

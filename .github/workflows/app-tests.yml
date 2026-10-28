@@ -35,7 +35,10 @@ jobs:
   test:
     needs: check-workflow-changes
     if: always()
-    runs-on: ubuntu-latest
+    # Fork: pinned because ubuntu-latest is now 26.04, which the locked
+    # Playwright (1.58) has no browser builds for. Drop on the next rebase if
+    # upstream's lock carries a Playwright that knows ubuntu26.04.
+    runs-on: ubuntu-24.04
     strategy:
       max-parallel: 4
       matrix:
