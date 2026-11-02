@@ -58,7 +58,7 @@ dev = [
   {include-group = "test"},
 ]
 docs = [
-  "zensical==0.0.72",
+  "zensical==0.0.74",
   "mike @ git+https://github.com/squidfunk/mike.git",
 ]
 
